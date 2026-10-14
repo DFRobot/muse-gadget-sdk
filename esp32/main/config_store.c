@@ -115,6 +115,8 @@ bool config_erase_key(const char *key) {
 config_key_lookup_t config_key_lookup(const char *key) {
     nvs_handle_t h;
     esp_err_t err = nvs_open(NS, NVS_READONLY, &h);
+    // A fresh device has no namespace yet; this is absence, not an I/O error.
+    if (err == ESP_ERR_NVS_NOT_FOUND) return CONFIG_KEY_NOT_FOUND;
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "lookup %s failed to open NVS: %s", key,
                  esp_err_to_name(err));

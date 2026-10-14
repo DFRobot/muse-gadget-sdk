@@ -43,7 +43,7 @@ if(CONFIG_MUSE_ENABLED)
         "muse_link.c"
         "muse_ble.c")
     if(CONFIG_MUSE_HATCH)
-        list(APPEND srcs "muse_chat.c" "muse_account_api.c" "muse_chat_session.cpp")
+        list(APPEND srcs "muse_chat.c" "muse_account_api.c" "muse_chat_session.cpp" "tts/tts_stream.cpp")
         list(APPEND embed "test_reply.mp3")   # muse_hatch_mp3_selftest
     else()
         list(APPEND srcs "muse_chat_link.c")   # text replies over Link's session
@@ -71,6 +71,22 @@ if(CONFIG_MUSE_ENABLED)
         list(APPEND srcs "boards/board_waveshare_s3_216.c" "boards/muse_lcd_bands.c")
     elseif(CONFIG_MUSE_BOARD_WAVESHARE_S3_185C)
         list(APPEND srcs "boards/board_waveshare_s3_185c.c" "boards/muse_lcd_bands.c")
+    elseif(CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10)
+        list(APPEND srcs
+            "boards/board_dfrobot_unihiker_k10.c"
+            "usb/usb_mode.c"
+            "sensors/k10_sensors.c"
+            "sensors/k10_catalog.c"
+            "sensors/sensor_manager.c"
+            "sensors/drivers/sensor_i2c.c"
+            "sensors/drivers/aht20.c"
+            "sensors/drivers/ltr303.c"
+            "sensors/drivers/sc7a20h.c"
+            "sensors/events/sensor_events.c"
+            "sensors/events/muse_event_sender.c")
+        if(CONFIG_MUSE_K10_CAMERA)
+            list(APPEND srcs "camera/k10_camera.c" "camera/drivers/gc2145.c")
+        endif()
     elseif(CONFIG_MUSE_BOARD_AIPI)
         list(APPEND srcs "boards/board_aipi.c")
     elseif(CONFIG_MUSE_BOARD_ESPRESSIF_BOX_3)
@@ -115,7 +131,7 @@ if(CONFIG_MUSE_ENABLED)
 elseif(CONFIG_HOMEHUB_VOICE)
     # The Voice PE board uses just the Hatch voice session; the project's main/
     # voice_muse_chat.c stands in for the Muse settings, Wi-Fi and Link hooks.
-    list(APPEND srcs "muse_chat.c" "muse_account_api.c" "muse_chat_session.cpp" "muse_chat_text.c" "muse_text.c")
+    list(APPEND srcs "muse_chat.c" "muse_account_api.c" "muse_chat_session.cpp" "tts/tts_stream.cpp" "muse_chat_text.c" "muse_text.c")
     list(APPEND embed "test_reply.mp3")
 endif()
 
@@ -124,8 +140,9 @@ set(muse_priv_requires
     bt esp-tls mbedtls esp_app_format esp_http_client
     noise_core minimp3
     esp_lcd esp_adc esp_driver_i2s esp_driver_ledc esp_driver_spi esp_driver_uart esp_wifi
-    esp_driver_pcnt)
-list(APPEND muse_priv_requires camera)
+    esp_driver_pcnt led_strip)
+# Requirements are discovered before Kconfig; TTS uses IDF's TLS/WS transport.
+list(APPEND muse_priv_requires camera tcp_transport)
 
 idf_component_register(
     SRCS ${srcs}

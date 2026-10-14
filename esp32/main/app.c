@@ -30,7 +30,7 @@
 #include "cJSON.h"
 
 #include "esp_heap_caps.h"
-#if CONFIG_MUSE_WATCHER_CAMERA
+#if CONFIG_MUSE_WATCHER_CAMERA || CONFIG_MUSE_K10_CAMERA
 #include "freertos/idf_additions.h"
 #endif
 #include "esp_timer.h"
@@ -66,6 +66,9 @@
 #include "link_pairing.h"
 #include "bug_report.h"
 #include "diagnostic_log.h"
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+#include "sensors/k10_sensors.h"
+#endif
 #if CONFIG_HOMEHUB_VOICE
 #include "voice.h"
 #endif
@@ -77,6 +80,10 @@
 #endif
 #if CONFIG_MUSE_WATCHER_CAMERA
 #include "boards/watcher_camera.h"
+#endif
+#if CONFIG_MUSE_K10_CAMERA
+#include "camera/k10_camera.h"
+#include "camera/k10_camera_config.h"
 #endif
 #if CONFIG_MUSE_ENABLED
 #include "muse_glue.h"
@@ -1579,14 +1586,17 @@ static void draw_url_done(const image_fetch_result_t *r, void *user) {
 }
 #endif
 
-#if CONFIG_MUSE_WATCHER_CAMERA
+#if CONFIG_MUSE_WATCHER_CAMERA || CONFIG_MUSE_K10_CAMERA
 typedef struct {
     noise_ctrl_session_generation_t session_generation;
     char request_id[64];
-} watcher_camera_task_args_t;
+} camera_task_args_t;
 
-static void watcher_camera_capture_task(void *arg) {
-    watcher_camera_task_args_t *args = arg;
+static void camera_capture_task(void *arg) {
+    camera_task_args_t *args = arg;
+#if CONFIG_MUSE_K10_CAMERA
+    cJSON *result = k10_camera_command();
+#else
     char *image = NULL;
     const char *error = NULL;
     cJSON *result = cJSON_CreateObject();
@@ -1602,6 +1612,7 @@ static void watcher_camera_capture_task(void *arg) {
         cJSON_AddStringToObject(failure, "message", error ? error : "camera capture failed");
     }
     free(image);
+#endif
     noise_ctrl_send_command_result(args->session_generation, args->request_id, result);
     free(args);
     stack_monitor_record(NULL);
@@ -1909,13 +1920,18 @@ static cJSON *on_ws_command(
         return result;
     }
 #endif
-#if CONFIG_MUSE_WATCHER_CAMERA
+#if CONFIG_MUSE_WATCHER_CAMERA || CONFIG_MUSE_K10_CAMERA
     if (strcmp(command, "camera.capture") == 0) {
-        watcher_camera_task_args_t *args = calloc(1, sizeof(*args));
+        camera_task_args_t *args = calloc(1, sizeof(*args));
         if (!args) return command_error("out_of_memory", "failed to allocate camera request");
         args->session_generation = session_generation;
         strncpy(args->request_id, request_id, sizeof(args->request_id) - 1);
-        if (xTaskCreateWithCaps(watcher_camera_capture_task, "camera_capture", 8192,
+#if CONFIG_MUSE_K10_CAMERA
+        const uint32_t worker_stack = K10_CAMERA_WORKER_STACK;
+#else
+        const uint32_t worker_stack = 8192;
+#endif
+        if (xTaskCreateWithCaps(camera_capture_task, "camera_capture", worker_stack,
                                 args, 4, NULL, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS) {
             free(args);
             return command_error("out_of_memory", "failed to start camera capture");
@@ -1933,6 +1949,12 @@ static cJSON *on_ws_command(
 #if CONFIG_HOMEHUB_SENSECAP_SENSORS
     if (strcmp(command, "sensors.read") == 0) {
         return sensecap_sensors_command();
+    }
+#endif
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    if (strcmp(command, "sensors.read") == 0) {
+        cJSON *result = k10_sensors_command();
+        return result ? result : command_error("no_memory", "Sensor result allocation failed");
     }
 #endif
 #if CONFIG_HOMEHUB_RETERMINAL_SHT4X
@@ -2440,6 +2462,14 @@ void app_reset_setup_async(void) {
         atomic_store_explicit(&s_setup_reset_pending, true, memory_order_release);
     }
 }
+
+bool app_credentials_begin(void) {
+    return operation_gate_take(0, "USB credential configuration");
+}
+
+void app_credentials_end(void) {
+    operation_gate_give();
+}
 #endif  // CONFIG_MUSE_ENABLED
 
 // ---- VM transport status forwarding ----------------------------------------
@@ -2598,8 +2628,7 @@ void app_run(void) {
     ESP_LOGI(TAG, "  Colour:   %s", have_colour ? colour : "(none)");
     ESP_LOGI(TAG, "  Region:   %s", have_region ? region : "(none)");
     ESP_LOGI(TAG, "  Verify:   %s", link_pairing_sign_factory_test());
-    // Only the hint gadgets.muse.ai displays; the full token is never logged.
-    ESP_LOGI(TAG, "  SDK token:  %.12s", identity_sdk_token() ? identity_sdk_token() : "(none)");
+    ESP_LOGI(TAG, "  SDK token:  %s", identity_sdk_token() ? "configured" : "not configured (USB setup required)");
     ESP_LOGI(TAG, "========================");
 
     link_pairing_init(identity_node_id(), identity_device_id(), identity_mac(),

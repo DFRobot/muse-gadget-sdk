@@ -61,6 +61,7 @@ before adding a feature to one.
 | Waveshare ESP32-S3-Touch-AMOLED-2.16 | `esp32s3` | `devices/sdkconfig.muse;devices/sdkconfig.muse-waveshare-s3-216` | `tools/muse/board.sh build s3-216` |
 | OSTB EchoEar-2ST (experimental) | `esp32s3` | `devices/sdkconfig.muse;devices/sdkconfig.muse-ostb-echoear-2st` | `tools/muse/board.sh build echoear` |
 | Espressif ESP32-S3-BOX-3 | `esp32s3` | `devices/sdkconfig.muse;devices/sdkconfig.muse-espressif-box-3` | `tools/muse/board.sh build box3` |
+| DFRobot UNIHIKER K10 | `esp32s3` | `devices/sdkconfig.muse;devices/sdkconfig.muse-dfrobot-unihiker-k10` | `tools/muse/k10.ps1` (Windows) |
 | AIPI Lite | `esp32s3` | `devices/sdkconfig.muse;devices/sdkconfig.muse-aipi` | manual |
 | Waveshare ESP32-C6-Touch-AMOLED-1.8 | `esp32c6` | `devices/sdkconfig.muse;devices/sdkconfig.muse-waveshare-c6-18` | manual |
 | Waveshare ESP32-C6-Touch-AMOLED-2.06 | `esp32c6` | `devices/sdkconfig.muse;devices/sdkconfig.muse-waveshare-c6-206` | `tools/muse/board.sh build c6-206` |
@@ -103,6 +104,13 @@ USB-charger backfeed into PPK2. Other boards reuse the shared
 `muse_power_test_run()` core through `boards/muse_power_test_board.h` hooks
 and board-owned matrices, driven by `tools/power/power_sweep.py`; do not fork
 or rename the core for the next board.
+
+For K10 user-distributed firmware, use `tools/muse/k10-public.ps1` instead:
+it enables `CONFIG_GADGET_SDK_RUNTIME_ONLY=y` in an isolated public build,
+contains no developer token, and users configure their own via the USB page.
+Do not request a developer token for this public profile. SDK token NVS I/O
+belongs in the internal-stack keeper through `main/credentials`, never in
+the PSRAM-stack USB task. See `tools/muse/usb-config/README.md`.
 
 ### DevKitC-1 (default)
 

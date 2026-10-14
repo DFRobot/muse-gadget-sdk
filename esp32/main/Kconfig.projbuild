@@ -23,14 +23,24 @@ menu "ESP32 Device SDK"
             backend strings. Internal builds override this to match
             the shipping product name.
 
+    config GADGET_SDK_RUNTIME_ONLY
+        bool "Configure SDK token at runtime only (public firmware)"
+        default n
+        help
+            Never compile a developer SDK token into this firmware. Users
+            save their own token to NVS using the USB configuration page.
+
     config GADGET_SDK_TOKEN
         string "Muse Gadgets SDK token"
+        depends on !GADGET_SDK_RUNTIME_ONLY
         default ""
         help
             Your mgst_ SDK token from gadgets.muse.ai (Account > SDK tokens).
             Every gadget needs one to pair. The device hands it to the Muse
             app inside the encrypted pairing session and includes it when it
             refreshes its device token.
+            A valid token in NVS takes priority. Public firmware uses
+            GADGET_SDK_RUNTIME_ONLY and ships without this fallback.
 
     config GADGET_SDK_TOKEN_WARN
         bool "Warn on every build when no SDK token is set"

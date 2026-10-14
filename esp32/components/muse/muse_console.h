@@ -31,6 +31,8 @@
 
 /* rx_buf bytes are kept; what doesn't fit is dropped. */
 esp_err_t muse_console_install(size_t rx_buf);
+/* K10 setup transport rollback; called before its receiver task starts. */
+void muse_console_close(void);
 /* Blocks for the next byte; false on a driver error. */
 bool muse_console_getc(uint8_t *c);
 void muse_console_write(const void *buf, size_t n);

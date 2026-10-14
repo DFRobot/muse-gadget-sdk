@@ -80,7 +80,7 @@ static pairing_signer_t s_signer = PAIRING_SIGNER_UNRESOLVED;
 
 static const char *s_node_id = "";
 // Borrowed like the other identity strings: set once before BLE starts and
-// pointing at static storage (the CONFIG_GADGET_SDK_TOKEN literal).
+// pointing at immutable static storage (the identity boot credential cache).
 static const char *s_sdk_token;
 static const char *s_device_id = "";
 static const char *s_mac = "";
@@ -1055,7 +1055,7 @@ static char *status_plain_json(const char *status) {
         return NULL;
     }
     if (s_sdk_token && strcmp(status, "pairing_confirmed") == 0) {
-        ESP_LOGI(TAG, "pairing_confirmed carries SDK token %.12s", s_sdk_token);
+        ESP_LOGI(TAG, "pairing_confirmed carries configured SDK token");
     }
     char *plain_json = cJSON_PrintUnformatted(plain);
     cJSON_Delete(plain);

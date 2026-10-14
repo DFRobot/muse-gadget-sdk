@@ -36,6 +36,10 @@
 #include "muse_text.h"
 #include "muse_voice.h"
 #include "muse_wifi.h"
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+#include "sensors/k10_sensors.h"
+#include "usb/usb_mode.h"
+#endif
 
 static const char *TAG = "muse_menu";
 
@@ -63,6 +67,10 @@ static const char *TAG = "muse_menu";
  */
 typedef enum {
     ITEM_VOLUME,
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    ITEM_SENSORS,
+    ITEM_USB,
+#endif
     ITEM_SPEAKER,
     ITEM_BRIGHTNESS,
     ITEM_MIC,
@@ -80,6 +88,10 @@ typedef enum {
 
 static const char *const ITEM_NAMES[ITEM_COUNT] = {
     [ITEM_VOLUME] = "Volume",
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    [ITEM_SENSORS] = "Sensors",
+    [ITEM_USB] = "USB mode",
+#endif
     [ITEM_SPEAKER] = "Speaker",
     [ITEM_BRIGHTNESS] = "Brightness",
     [ITEM_MIC] = "Mic gain",
@@ -97,6 +109,10 @@ static const char *const ITEM_NAMES[ITEM_COUNT] = {
 /* What the talk button does on each row. */
 static const char *const ITEM_ACTIONS[ITEM_COUNT] = {
     [ITEM_VOLUME] = "Change",
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    [ITEM_SENSORS] = "Open",
+    [ITEM_USB] = "Enter",
+#endif
     [ITEM_SPEAKER] = "Toggle",
     [ITEM_BRIGHTNESS] = "Change",
     [ITEM_MIC] = "Change",
@@ -124,6 +140,10 @@ typedef enum {
     VIEW_LIST,
     VIEW_STATUS,
     VIEW_BATTERY,
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    VIEW_SENSORS,
+    VIEW_USB,
+#endif
     VIEW_POWER,
     VIEW_RESET,
 } view_t;
@@ -146,6 +166,7 @@ static lv_obj_t *s_list;
 static lv_obj_t *s_rows[ITEM_COUNT];
 static lv_obj_t *s_values[ITEM_COUNT];
 static lv_obj_t *s_page;        /* status and power-off confirmation text */
+static const lv_font_t *s_page_font;
 static lv_obj_t *s_hint_down;
 static lv_obj_t *s_hint_select;
 static const char *s_down_text;
@@ -200,6 +221,11 @@ static void value_text(int item, char *buf, size_t n)
     muse_power_t p;
 
     switch (item) {
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    case ITEM_USB:
+        strlcpy(buf, muse_usb_mode_name(), n);
+        break;
+#endif
     case ITEM_VOLUME:
         snprintf(buf, n, "%d%%", muse_settings_volume());
         break;
@@ -324,6 +350,15 @@ static void refresh(void)
     } else if (s_view == VIEW_STATUS) {
         status_text(buf, sizeof(buf));
         set_text(s_page, buf);
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    } else if (s_view == VIEW_SENSORS) {
+        k10_sensors_text(buf, sizeof(buf));
+        set_text(s_page, buf);
+    } else if (s_view == VIEW_USB) {
+        snprintf(buf, sizeof(buf), "USB mode: %s\n\nOpen the USB config\npage on your computer.\n\nRestart K10 to exit.",
+                 muse_usb_mode_name());
+        set_text(s_page, buf);
+#endif
     } else if (s_view == VIEW_BATTERY) {
         int64_t now = esp_timer_get_time();
         if (!s_batt_shown_us || now - s_batt_shown_us >= 1000000) {
@@ -341,10 +376,26 @@ static void show(view_t view)
     s_batt_shown_us = 0;
     lv_obj_set_flag(s_list, LV_OBJ_FLAG_HIDDEN, view != VIEW_LIST);
     lv_obj_set_flag(s_page, LV_OBJ_FLAG_HIDDEN, view == VIEW_LIST);
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    lv_obj_set_style_text_line_space(s_page, view == VIEW_SENSORS || view == VIEW_USB ? 2 : 8, 0);
+    lv_obj_set_style_text_font(s_page, view == VIEW_USB ? &lv_font_montserrat_14 : s_page_font, 0);
+#endif
     bool danger = view == VIEW_POWER || view == VIEW_RESET;
     lv_obj_set_style_text_color(s_hint_select, lv_color_hex(danger ? COLOR_DANGER : COLOR_TEXT), 0);
 
     switch (view) {
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    case VIEW_SENSORS:
+        set_text(s_title, "SENSORS");
+        set_text(s_hint_down, "Back");
+        select_hint("Back");
+        break;
+    case VIEW_USB:
+        set_text(s_title, "USB MODE");
+        set_text(s_hint_down, "");
+        set_text(s_hint_select, "");
+        break;
+#endif
     case VIEW_STATUS:
     case VIEW_BATTERY:
         set_text(s_title, view == VIEW_STATUS ? "STATUS" : "BATTERY");
@@ -389,6 +440,15 @@ static void activate(int item, int direction)
 {
     ESP_LOGI(TAG, "select %s", ITEM_NAMES[item]);
     switch (item) {
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    case ITEM_SENSORS:
+        show(VIEW_SENSORS);
+        return;
+    case ITEM_USB:
+        muse_usb_mode_request();
+        show(VIEW_USB);
+        return;
+#endif
     case ITEM_VOLUME:
         muse_settings_set_volume(value_step(VOLUME_STEPS, COUNT(VOLUME_STEPS), muse_settings_volume(), direction));
         muse_voice_request_chirp();
@@ -458,9 +518,17 @@ static void handle(muse_menu_key_t key)
         break;
     case VIEW_STATUS:
     case VIEW_BATTERY:
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    case VIEW_SENSORS:
+#endif
         if (key == MUSE_MENU_BACK || key == MUSE_MENU_LEFT || key == MUSE_MENU_SELECT ||
             key == MUSE_MENU_DOWN || key == MUSE_MENU_UP) show(VIEW_LIST);
         break;
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    case VIEW_USB:
+        // Configuration keeps the screen locked until a real restart.
+        break;
+#endif
     case VIEW_POWER:
     case VIEW_RESET:
         if (key == MUSE_MENU_BACK || key == MUSE_MENU_LEFT ||
@@ -514,6 +582,7 @@ void muse_menu_build(lv_obj_t *parent, int w, int h)
     bool small = h < 200 || w < 200;
     const lv_font_t *font = small ? FONT_COMPACT : &lv_font_montserrat_20;
     const lv_font_t *fine = small ? &lv_font_unscii_8 : &lv_font_unscii_16;
+    s_page_font = fine;
     int pad = small ? 2 : 8;
     int title_h = small ? 13 : 40;
     int hint_h = small ? 17 : 44;
@@ -607,7 +676,11 @@ bool muse_menu_tick(float now)
     if (s_view == VIEW_CLOSED) {
         return false;
     }
-    if (now - s_last_key > IDLE_CLOSE_S) {
+    bool keep_open = false;
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    keep_open = s_view == VIEW_USB;
+#endif
+    if (!keep_open && now - s_last_key > IDLE_CLOSE_S) {
         muse_menu_close();
         return false;
     }
@@ -620,6 +693,9 @@ bool muse_menu_tick(float now)
 
 void muse_menu_close(void)
 {
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    if (s_view == VIEW_USB) return;
+#endif
     if (!s_root || s_view == VIEW_CLOSED) {
         return;
     }

@@ -16,6 +16,13 @@
 
 #include "ble_commands.h"
 #include "noise_control.h"
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+#include "sensors/k10_sensors.h"
+#endif
+#if CONFIG_MUSE_K10_CAMERA
+#include "camera/k10_camera.h"
+#include "camera/k10_camera_config.h"
+#endif
 #include "stack_monitor.h"
 #include "noise_upgrade.h"
 #include "noise_tunnel_internal.h"
@@ -1478,6 +1485,9 @@ static char *build_register_json(void) {
                 "humidity need the Grove AHT20 plugged in.",
                 nullptr, nullptr);
 #endif
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    add_command(commands, "sensors.read", k10_sensors_description(), nullptr, nullptr);
+#endif
 #if CONFIG_HOMEHUB_RETERMINAL_SHT4X
     add_command(commands, "sensors.read",
                 "Read the onboard air sensor: temperature in degrees Celsius "
@@ -1493,6 +1503,13 @@ static char *build_register_json(void) {
                 nullptr, nullptr);
     cJSON_AddNumberToObject(
         cJSON_GetObjectItem(commands, "camera.capture"), "timeout_ms", 30000);
+#endif
+#if CONFIG_MUSE_K10_CAMERA
+    add_command(commands, "camera.capture",
+                k10_camera_description(),
+                nullptr, nullptr);
+    cJSON_AddNumberToObject(
+        cJSON_GetObjectItem(commands, "camera.capture"), "timeout_ms", K10_CAMERA_COMMAND_TIMEOUT_MS);
 #endif
 
     if (ota_is_enabled()) {

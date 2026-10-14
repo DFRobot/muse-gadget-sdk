@@ -26,8 +26,8 @@
  *   2. POST /chat/stream with the transcript. The reply arrives as events on
  *      the connection's long-lived POST /chat/subscribe stream: one or more
  *      assistant messages, each delta.message_start / text_append / message_done.
- *   3. Each finished message is shown at reading pace (see start_tts to
- *      speak it with a TTS API of your own; Muse doesn't speak gadget replies).
+ *   3. Each finished message uses tts/tts_stream for optional online speech,
+ *      or is shown at reading pace when speech is disabled/unavailable.
  * A turn has no explicit end event; like Sidekick, it settles once every
  * message is done and nothing has arrived for a few seconds.
  *
@@ -72,6 +72,7 @@ extern "C" {
 #include "muse_wifi.h"
 }
 #include "muse_chat_priv.h"
+#include "tts/tts_stream.h"
 
 #include <xplat/noise/core/ClientSession.h>
 #include <xplat/noise/core/PsaCryptoBackend.h>
@@ -237,6 +238,7 @@ struct turn_t {
     /* TTS */
     int tts_msg;             /* message being fetched (or shown, speaker off), or -1 */
     bool silent;             /* speaker off: tts_msg is paced by silence, not fetched */
+    muse_tts_stream_t *speech; /* independently owned PCM stream */
     uint8_t *mp3;            /* MP3_BUF */
     size_t mp3_len;
     bool mp3_ended;
@@ -257,6 +259,9 @@ static int64_t s_marks[M_COUNT];
 static char s_reply_shown[EV_TEXT];   /* the pre-speech caption last sent */
 
 static void mark(mark_t m);
+/* Cancellation is owned by the session; the provider only queries it. */
+static bool tts_is_current(uint32_t generation) { return generation == s_gen.load(); }
+
 static bool open_note(void);
 static void log_marks(void);
 static int16_t *s_pcm;       /* MINIMP3_MAX_SAMPLES_PER_FRAME */
@@ -953,6 +958,8 @@ static void turn_reset_streams(void)
 
 static void turn_finish(void)
 {
+    muse_tts_stream_close(s_turn.speech);
+    s_turn.speech = nullptr;
     turn_reset_streams();
     s_turn.phase = P_IDLE;
     s_turn.dict_id = s_turn.chat_id = 0;
@@ -1511,26 +1518,23 @@ static void start_tts(void)
         if (m.tts != TTS_QUEUED) {
             continue;
         }
-        /*
-         * Replies are text, shown at reading pace: silence in place of speech
-         * paces the captions and ends the turn. To speak them instead, send
-         * the message's text (s_turn.texts + i * TEXT_MAX, if texts was
-         * allocated; up to TEXT_MAX - 1 bytes) to a TTS API of your choice and
-         * play the MP3 it returns. In place of the silence below: keep
-         * m.tts = TTS_ACTIVE and s_turn.tts_msg = i, set s_turn.silent = false,
-         * m.pcm_start = s_turn.pcm_out, m.pcm_frames = 0, s_turn.mp3_len = 0,
-         * s_turn.mp3_ended = false, s_turn.kbps = 0, s_turn.down_rate = 0 and
-         * mp3dec_init(&s_turn.dec). Then, on this task, pass the MP3 to
-         * tts_data() as it arrives (it buffers up to MP3_BUF and drops the
-         * rest, so hold off while it's full) and set s_turn.mp3_ended at the
-         * end. decode() plays it at the speaker's volume, captions following,
-         * and finishes the message once it's drained.
-         */
+        /* The provider owns Cartesia and its PCM buffer; the session owns captions. */
         m.pcm_start = s_turn.pcm_out;
         m.pcm_frames = (uint32_t)(m.len * MIC_RATE / TEXT_CHARS_PER_S);
         m.tts = TTS_ACTIVE;
         s_turn.tts_msg = i;
         s_turn.silent = true;
+        if (s_turn.texts && muse_settings_speaker_on()) {
+            s_turn.speech = muse_tts_stream_open(s_turn.texts + i * TEXT_MAX, s_turn.gen, tts_is_current);
+        }
+        if (s_turn.speech) {
+            s_turn.silent = false;
+            s_turn.mp3_len = 0; s_turn.mp3_ended = false;
+            s_turn.kbps = 0; s_turn.down_rate = 0;
+            mp3dec_init(&s_turn.dec);
+            mark(M_TTS);
+            ESP_LOGI(TAG, "PCM streaming TTS requested for message %d", i);
+        }
         ESP_LOGI(TAG, "showing message %s (%u chars)", m.id, (unsigned)m.len);
         show_reply_start(m);
         return;
@@ -1546,6 +1550,29 @@ static void tts_data(const uint8_t *data, size_t len)
     mark(M_MP3);
     memcpy(s_turn.mp3 + s_turn.mp3_len, data, len);
     s_turn.mp3_len += len;
+}
+
+/* PCM already matches the voice task's 16 kHz mono output; no MP3 conversion. */
+static void pump_tts(void)
+{
+    if (!s_turn.speech || s_turn.tts_msg < 0) return;
+    size_t room = xStreamBufferSpacesAvailable(s_out) / sizeof(int16_t);
+    size_t capacity = MINIMP3_MAX_SAMPLES_PER_FRAME;
+    muse_tts_update_t update = muse_tts_stream_read(s_turn.speech, s_pcm16, room < capacity ? room : capacity);
+    if (update.frames && s_turn.gen == s_gen.load()) {
+        size_t written = xStreamBufferSend(s_out, s_pcm16, update.frames * sizeof(int16_t), 0);
+        s_turn.pcm_out += written / sizeof(int16_t); mark(M_AUDIO);
+    }
+    if (update.ended) {
+        msg_t &m = s_turn.msgs[s_turn.tts_msg];
+        muse_tts_stream_close(s_turn.speech); s_turn.speech = nullptr;
+        if (update.failed) ESP_LOGW(TAG, "Streaming TTS failed: %s", muse_tts_last_error());
+        if (s_turn.pcm_out == m.pcm_start) s_turn.silent = true;
+        else {
+            m.pcm_frames = s_turn.pcm_out - m.pcm_start;
+            m.tts = TTS_FINISHED; s_turn.tts_msg = -1;
+        }
+    }
 }
 
 static void tts_end(stream_t *s, bool ok)
@@ -1584,6 +1611,7 @@ static void pace_silently(void)
 /* Decodes buffered MP3 while the reply buffer has room. */
 static void decode(void)
 {
+    if (s_turn.speech) return; // Cartesia PCM bypasses the legacy MP3 decoder.
     if (s_turn.tts_msg < 0) {
         return;
     }
@@ -1988,6 +2016,7 @@ static void hatch_task(void *arg)
             drop_connection("send failed");
             continue;
         }
+        pump_tts();
         if (s_turn.phase == P_WAIT_REPLY) {
             start_tts();
             decode();

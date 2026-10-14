@@ -31,6 +31,7 @@
 #include "ble_server.h"
 #include "config_store.h"
 #include "identity.h"
+#include "credentials/sdk_credentials.h"
 #include "noise_control.h"
 #include "stack_monitor.h"
 #include "wifi_known.h"
@@ -43,6 +44,9 @@
 #include "muse_mem.h"
 #include "muse_settings.h"
 #include "muse_state.h"
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+#include "usb/usb_mode.h"
+#endif
 
 static const char *TAG = "link.muse";
 
@@ -55,6 +59,8 @@ static const char *TAG = "link.muse";
 #define KEEP_SAVE       BIT2    // remember s_ssid/s_pass first
 #define KEEP_RELOAD     BIT3    // Link may have changed the saved networks
 #define KEEP_FORGET     BIT4    // forget the networks marked in s_saved
+#define KEEP_SDK        BIT5    // USB SDK configuration request
+#define KEEP_USB        BIT6    // Create USB-only resources on explicit entry
 
 #define CONNECT_TIMEOUT_MS 20000
 #define RETRY_MIN_US (5LL * 1000 * 1000)
@@ -380,7 +386,31 @@ static void op_reset_setup(void) {
     app_reset_setup_async();
 }
 
+static void op_sdk_command(const char *line, bool whole) {
+    if (sdk_credentials_submit(line, whole)) keeper_kick(KEEP_SDK);
+}
+
+static bool op_sdk_ready(void) {
+#if CONFIG_HOMEHUB_PAIRING_EFUSE_AUTH
+    return true;
+#else
+    return identity_sdk_token() != NULL;
+#endif
+}
+
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+static bool op_usb_mode_request(void) {
+    keeper_kick(KEEP_USB);
+    return true;
+}
+#endif
+
 static const muse_link_ops_t s_ops = {
+    .sdk_command = op_sdk_command,
+    .sdk_ready = op_sdk_ready,
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    .usb_mode_request = op_usb_mode_request,
+#endif
     .wifi_status = op_wifi_status,
     .wifi_apply = op_wifi_apply,
     .wifi_get = op_wifi_get,
@@ -395,6 +425,7 @@ static const muse_link_ops_t s_ops = {
     .talk_press = op_talk_press,
     .reset_setup = op_reset_setup,
     .req_ready = noise_ctrl_is_connected,
+    .node_id = identity_node_id,
     .req_open = noise_ctrl_req_open,
     .req_send = noise_ctrl_req_send,
     .req_cancel = noise_ctrl_req_cancel,
@@ -490,6 +521,13 @@ static void keeper_task(void *arg) {
             backoff = RETRY_MIN_US;
             away_backoff = AWAY_MIN_US;
         }
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+        if (pending & KEEP_USB) {
+            bool queue_ready = sdk_credentials_usb_start();
+            if (muse_usb_mode_start(queue_ready) != ESP_OK) sdk_credentials_usb_stop();
+        }
+#endif
+        sdk_credentials_process();
         if (pending & KEEP_RELOAD) {
             // Link saves a network it has already joined (provisioning), so
             // don't treat that as a change to rejoin: dropping Wi-Fi mid-setup

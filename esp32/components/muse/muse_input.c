@@ -45,6 +45,16 @@
 #include "muse_ui.h"
 #include "muse_voice.h"
 #include "muse_wifi.h"
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+#include "sensors/k10_sensors.h"
+#include "sensors/events/k10_humidity_policy.h"
+#include "sensors/sensor_selftest.h"
+#include "usb/usb_mode.h"
+#endif
+#if CONFIG_MUSE_K10_CAMERA
+#include "camera/k10_camera.h"
+#include "freertos/idf_additions.h"
+#endif
 #if CONFIG_MUSE_WATCHER_CAMERA
 #include "boards/watcher_camera.h"
 #endif
@@ -320,6 +330,12 @@ static void keyboard_buttons(unsigned ev)
 /* A pairing prompt wakes the screen and keeps it on; otherwise idle sleeps. */
 static void check_sleep(void)
 {
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    if (muse_usb_mode_enabled()) {
+        if (muse_state_asleep()) set_asleep(false, "USB configuration");
+        return;
+    }
+#endif
     muse_ble_status_t ble;
     muse_ble_status(&ble);
     bool prompt = ble.passkey || muse_link_state() == MUSE_LINK_CONFIRM;
@@ -525,6 +541,11 @@ static void input_task(void *arg)
 
     for (;;) {
         unsigned ev = muse_board->poll_buttons() | atomic_exchange(&s_touch_talk_events, 0);
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+        // Keep background services running, but ignore device buttons during
+        // USB configuration (including pairing confirmation and push-to-talk).
+        if (muse_usb_mode_enabled()) ev = 0;
+#endif
         if (ev & (MUSE_BTN_TALK_PRESS | MUSE_BTN_TALK_RELEASE)) {
             ESP_LOGI(TAG, "talk key:%s%s", ev & MUSE_BTN_TALK_PRESS ? " press" : "",
                      ev & MUSE_BTN_TALK_RELEASE ? " release" : "");
@@ -697,6 +718,40 @@ static void set_face(const char *name)
  */
 static bool console_command(char *line, bool whole)
 {
+    if (!strncmp(line, "sdk.", 4)) {
+        muse_link_sdk_command(line, whole);
+        return true; /* Never pass secrets to BLE's unknown-command logger. */
+    }
+#if CONFIG_MUSE_K10_CAMERA
+    if (!strcmp(line, "camera.capture")) {
+        if (!k10_camera_serial_capture()) {
+            printf("@camera.capture {\"ok\":false,\"error\":{\"message\":\"cannot start camera worker\"}}\n");
+            fflush(stdout);
+        }
+        return true;
+    }
+#endif
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    if (!strcmp(line, "sensors")) { k10_sensors_print(); return true; }
+    if (!strcmp(line, "sensors.registry.selftest")) {
+        printf("@sensors.registry %s\n", sensor_snapshot_selftest() ? "passed" : "failed");
+        fflush(stdout); return true;
+    }
+    if (!strcmp(line, "humidity.alert.selftest")) {
+        printf("@humidity.policy %s\n", k10_humidity_policy_test() ? "passed" : "failed");
+        fflush(stdout); return true;
+    }
+    if (!strcmp(line, "humidity.alert.test")) {
+        printf("@humidity.test %s\n", k10_humidity_alert_test() ? "queued" : "busy");
+        fflush(stdout); return true;
+    }
+    if (!strcmp(line, "sensors.muse")) {
+        cJSON *result = k10_sensors_command();
+        char *json = result ? cJSON_PrintUnformatted(result) : NULL;
+        if (json) { printf("@sensors.muse %s\n", json); fflush(stdout); }
+        free(json); cJSON_Delete(result); return true;
+    }
+#endif
     if (!strcmp(line, "status")) {
         size_t cap = 1024;   /* long SSID, host and VM names escaped: past 512 */
         char *json = heap_caps_malloc(cap, MUSE_BIG_CAPS);
@@ -784,9 +839,11 @@ static bool console_command(char *line, bool whole)
  */
 static void serial_task(void *arg)
 {
+#if !CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
     if (muse_console_install(SERIAL_RX) != ESP_OK) {
         vTaskDelete(NULL);
     }
+#endif
     for (;;) {
         uint8_t c;
         if (!muse_console_getc(&c)) {
@@ -808,6 +865,10 @@ static void serial_task(void *arg)
             if (line && !console_command(line, whole)) {
                 muse_ble_command(line);
             }
+            if (line) {
+                volatile unsigned char *p = (volatile unsigned char *)line;
+                for (size_t i = 0; i < SERIAL_LINE; ++i) p[i] = 0;
+            }
             free(line);
         } else if (c == 'd' || c == 'u') {
             muse_state_poke();
@@ -819,11 +880,26 @@ static void serial_task(void *arg)
 esp_err_t muse_input_start(QueueHandle_t queue)
 {
     s_queue = queue;
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    muse_usb_mode_init(serial_task, muse_link_sdk_ready());
+#endif
+#if CONFIG_MUSE_K10_CAMERA
+    /* Keep internal RAM available for the on-demand camera's DMA descriptors
+     * and capture task while the Muse network session is active. */
+    if (xTaskCreateWithCaps(input_task, "muse_input", 4096, NULL, 6, &s_input,
+                           MUSE_BIG_CAPS) != pdPASS) return ESP_FAIL;
+#if !CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    xTaskCreateWithCaps(serial_task, "muse_serial", 3584, NULL, 5, NULL, MUSE_BIG_CAPS);
+#endif
+#else
     if (xTaskCreate(input_task, "muse_input", 4096, NULL, 6, &s_input) != pdPASS) {
         return ESP_FAIL;
     }
     /* Bench-test and setup console; the input still works if it can't start. */
+#if !CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
     xTaskCreate(serial_task, "muse_serial", 3584, NULL, 5, NULL);
+#endif
+#endif
     return ESP_OK;
 }
 

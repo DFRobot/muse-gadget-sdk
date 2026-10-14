@@ -27,6 +27,7 @@ set(GADGET_SRCS
     "wifi_mgr.c"
     "wifi_known.c"
     "identity.c"
+    "credentials/sdk_credentials.c"
     "config_store.c"
     "vm_api.c"
     "diagnostic_log.c"
@@ -93,6 +94,9 @@ endif()
 
 if(CONFIG_MUSE_ENABLED)
     list(APPEND GADGET_SRCS "muse_glue.c")
+    if(CONFIG_MUSE_K10_CARTESIA)
+        list(APPEND GADGET_SRCS "credentials/tts_credentials.c")
+    endif()
 endif()
 
 if(CONFIG_HOMEHUB_LED_BACKEND_DEVKIT_GPIO27 OR CONFIG_HOMEHUB_LED_BACKEND_VOICE_RING OR CONFIG_HOMEHUB_LED_BACKEND_RESPEAKER_LITE)

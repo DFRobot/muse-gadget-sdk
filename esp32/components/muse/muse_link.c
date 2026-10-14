@@ -30,6 +30,21 @@ void muse_link_register(const muse_link_ops_t *ops)
     s_ops = ops;
 }
 
+void muse_link_sdk_command(const char *line, bool whole)
+{
+    if (s_ops && s_ops->sdk_command) s_ops->sdk_command(line, whole);
+}
+
+bool muse_link_sdk_ready(void)
+{
+    return !s_ops || !s_ops->sdk_ready || s_ops->sdk_ready();
+}
+
+bool muse_link_usb_mode_request(void)
+{
+    return s_ops && s_ops->usb_mode_request && s_ops->usb_mode_request();
+}
+
 void muse_link_set_state(muse_link_state_t state)
 {
     if (state != s_state) {
@@ -109,6 +124,11 @@ bool muse_link_ble_started(void)
 bool muse_link_req_ready(void)
 {
     return s_ops && s_ops->req_ready && s_ops->req_ready();
+}
+
+const char *muse_link_node_id(void)
+{
+    return s_ops && s_ops->node_id ? s_ops->node_id() : "";
 }
 
 int64_t muse_link_req_open(const char *verb, const char *path, const char *const *headers, bool end_body,

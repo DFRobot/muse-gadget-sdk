@@ -37,6 +37,11 @@
 #include "muse_settings.h"
 #include "muse_state.h"
 #include "muse_wifi.h"
+#if CONFIG_MUSE_K10_CARTESIA
+#include "tts/tts_stream.h"
+#include <stdatomic.h>
+static atomic_int s_ttstest; // 0=off, 1=short, 2=long diagnostic
+#endif
 
 static const char *TAG = "muse_voice";
 
@@ -436,6 +441,47 @@ static void go_idle(const char *caption)
     muse_state_set_caption("%s", caption);
 }
 
+#if CONFIG_MUSE_K10_CARTESIA
+static bool test_current(uint32_t generation) { (void)generation; return atomic_load(&s_ttstest); }
+static void tts_test(void)
+{
+    muse_state_set_mode(MUSE_MODE_THINKING);
+    muse_state_set_caption("TTS TEST");
+    static const char long_text[] =
+        "This is a long speech stability test. We will play a continuous passage to check network reception and speaker output. "
+        "Early one morning, Alex walked into a park with a backpack. Dew covered the leaves and birds sang in the trees. "
+        "Along the riverside path, an older gardener was watering flowers. Alex stopped to ask what they were called. "
+        "The gardener explained that plants need patience, sunlight, and careful attention to temperature and humidity. "
+        "Alex checked the readings on a small device and noticed how fresh the air felt that morning. "
+        "Near a bridge, a child was looking for a toy lost in the grass. Together they searched until they found it beside a stone. "
+        "The child said thank you, and Alex smiled before walking on to sit by the lake and listen to the wind in the trees. "
+        "Sometimes ordinary journeys become memorable because of small encounters like these. "
+        "The long speech test is now almost complete. If you heard the full passage without the device restarting, this playback test has finished.";
+    muse_tts_stream_t *stream = muse_tts_stream_open(atomic_load(&s_ttstest) == 2 ? long_text :
+        "Hello. This is the K10 streaming speech test.", 0, test_current);
+    static int16_t pcm[MUSE_AUDIO_CHUNK];
+    static const int16_t silence[MUSE_AUDIO_CHUNK];
+    size_t played = 0; bool ok = false;
+    int64_t started = esp_timer_get_time();
+    while (stream && test_current(0) && esp_timer_get_time() - started < 150000000LL) {
+        if (got_event(MUSE_PTT_DOWN)) break;
+        muse_tts_update_t update = muse_tts_stream_read(stream, pcm, MUSE_AUDIO_CHUNK);
+        if (update.frames) {
+            muse_state_set_mode(MUSE_MODE_SPEAKING);
+            muse_audio_write(pcm, update.frames); played += update.frames;
+        } else if (played && !update.ended) muse_audio_write(silence, MUSE_AUDIO_CHUNK);
+        else vTaskDelay(pdMS_TO_TICKS(10));
+        if (update.ended) { ok = !update.failed && played > 0; break; }
+    }
+    atomic_store(&s_ttstest, false);
+    muse_tts_stream_close(stream);
+    printf("\n@tts.test {\"ok\":%s,\"frames\":%u,\"error\":\"%s\"}\n", ok ? "true" : "false", (unsigned)played,
+           ok ? "" : muse_tts_last_error()); fflush(stdout);
+    go_idle(ok ? "TTS TEST OK" : "TTS TEST FAILED");
+    pre_reset();
+}
+#endif
+
 /* Why a press can't go to Hatch; voice notes only go there. */
 static const char *not_ready_reason(void)
 {
@@ -797,6 +843,9 @@ static void voice_task(void *arg)
             bool asleep = muse_state_asleep();
             bool battery = muse_state_on_battery();
             bool rest = asleep && battery && !s_chirp && !s_mp3test && !s_loopback;
+#if CONFIG_MUSE_K10_CARTESIA
+            if (atomic_load(&s_ttstest)) rest = false;
+#endif
 #if HOLD_NOTES
             /* A press goes first: send_held() leaves it queued and returns
              * without backing off, so retrying before it's read would spin. */
@@ -843,6 +892,9 @@ static void voice_task(void *arg)
                 muse_audio_loopback_test(muse_settings_volume());
                 pre_reset();
             }
+#if CONFIG_MUSE_K10_CARTESIA
+            if (atomic_load(&s_ttstest)) tts_test();
+#endif
             /* The 20 ms read paces this loop. */
             idle_capture();
             if (xQueueReceive(s_queue, &ev, 0) != pdTRUE) {
@@ -936,6 +988,18 @@ void muse_voice_request_mp3test(void)
 {
     s_mp3test = true;
     muse_state_nudge();
+}
+
+bool muse_voice_request_ttstest(bool long_test)
+{
+#if CONFIG_MUSE_K10_CARTESIA
+    if (!muse_tts_configured() || !muse_settings_speaker_on() || muse_state_mode(NULL) != MUSE_MODE_IDLE) return false;
+    int expected = 0;
+    if (!atomic_compare_exchange_strong(&s_ttstest, &expected, long_test ? 2 : 1)) return false;
+    muse_state_nudge(); return true;
+#else
+    return false;
+#endif
 }
 
 bool muse_voice_resting(void)

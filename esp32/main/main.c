@@ -20,6 +20,7 @@
 #if CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP
 #include "esp_psram.h"
 #endif
+#include "esp_system.h"
 #include "diagnostic_log.h"
 #if CONFIG_MUSE_POWER_TEST
 #include "muse_power_test.h"
@@ -56,6 +57,7 @@ void app_main(void) {
     pipeline_bench_main();
     return;
 #endif
+    ESP_LOGI("link.main", "reset_reason=%d", (int)esp_reset_reason());
 #if CONFIG_MUSE_ENABLED
     muse_glue_start();
 #endif

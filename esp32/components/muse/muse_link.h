@@ -49,6 +49,9 @@ typedef enum {
 typedef void (*muse_link_req_cb)(void *ctx, int status, const uint8_t *data, size_t len, bool end);
 
 typedef struct {
+    void (*sdk_command)(const char *line, bool whole); /* asynchronous USB-only credentials */
+    bool (*sdk_ready)(void);                       /* boot cache, no NVS access */
+    bool (*usb_mode_request)(void);                /* enable this boot's K10 USB transport */
     void (*wifi_status)(muse_wifi_status_t *out);
     void (*wifi_apply)(void);                     /* on/off or credentials changed */
     void (*wifi_get)(char *ssid, char *pass);     /* MUSE_SSID_MAX+1 / MUSE_PASS_MAX+1; pass may be NULL */
@@ -66,6 +69,7 @@ typedef struct {
     void (*reset_setup)(void);                    /* forget Link setup and reboot */
     /* Requests to the VM on Link's own Noise session, for boards without PSRAM for their own. */
     bool (*req_ready)(void);                      /* the session is up */
+    const char *(*node_id)(void);                 /* device-originated chat attribution */
     int64_t (*req_open)(const char *verb, const char *path, const char *const *headers, bool end_body,
                         muse_link_req_cb cb, void *ctx);
     bool (*req_send)(int64_t id, const void *data, size_t len, bool end_body, int wait_ms);
@@ -77,6 +81,9 @@ typedef struct {
 } muse_link_ops_t;
 
 void muse_link_register(const muse_link_ops_t *ops);
+void muse_link_sdk_command(const char *line, bool whole);
+bool muse_link_sdk_ready(void);
+bool muse_link_usb_mode_request(void);
 
 /* Link's status, mirrored from its LED state. */
 void muse_link_set_state(muse_link_state_t state);
@@ -94,6 +101,7 @@ bool muse_link_wifi_set(const char *ssid, const char *pass);
 bool muse_link_ble_started(void);
 /* Requests on Link's session (noise_ctrl_req_* in main/noise_control.h); open returns 0 if down. */
 bool muse_link_req_ready(void);
+const char *muse_link_node_id(void);
 int64_t muse_link_req_open(const char *verb, const char *path, const char *const *headers, bool end_body,
                            muse_link_req_cb cb, void *ctx);
 bool muse_link_req_send(int64_t id, const void *data, size_t len, bool end_body, int wait_ms);

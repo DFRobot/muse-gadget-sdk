@@ -89,6 +89,30 @@ static void save_str(const char *key, const char *v)
     nvs_commit(s_nvs);
 }
 
+bool muse_settings_clear_credentials(void)
+{
+    static const char *const keys[] = {"token", "vm", "host", "ssid", "pass"};
+    bool ok = true;
+    if (!s_lock) return false;
+    LOCKED({
+        for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); ++i) {
+            esp_err_t err = nvs_erase_key(s_nvs, keys[i]);
+            if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) ok = false;
+        }
+        if (nvs_commit(s_nvs) != ESP_OK) ok = false;
+        for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); ++i) {
+            size_t length = 0;
+            if (nvs_get_str(s_nvs, keys[i], NULL, &length) != ESP_ERR_NVS_NOT_FOUND) ok = false;
+        }
+        if (ok) {
+            memset(s.token, 0, sizeof(s.token));
+            s.vm[0] = s.ssid[0] = s.pass[0] = '\0';
+            strlcpy(s.host, DEFAULT_HOST, sizeof(s.host));
+        }
+    });
+    return ok;
+}
+
 static void notify(muse_setting_t what)
 {
     if (s_listener) {

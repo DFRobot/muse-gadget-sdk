@@ -22,7 +22,8 @@
 // Persistent key/value config stored in NVS.
 // Setup keys: ssid, password, wifi_channel, wifi_others, wifi_hidden (see
 // wifi_known.h), access_token, refresh_token, vm_url, username, api_url,
-// api_url_v2, noise_host, setup_complete. Device-level keys are
+// api_url_v2, noise_host, setup_complete. sdk_token is a device-level key:
+// it survives pairing retries and setup reset. Device-level keys are
 // preserved by config_clear_pairing() and config_clear_setup().
 // auth_token is a legacy alias from early Link firmware and is only kept
 // long enough to migrate by minting a device token pair.
@@ -50,7 +51,8 @@ bool config_clear_pairing(void);
 // Full local setup reset: removes WiFi, tokens, vm_url, username, endpoint
 // overrides, and the setup-complete marker. Returns true
 // only after every credential is durably erased and a readback reports it absent.
-// Device-level keys are preserved.
+// Device-level keys (including runtime SDK token) are preserved. The USB
+// factory operation explicitly erases SDK and manual Muse credentials too.
 bool config_clear_setup(void);
 
 bool config_is_provisioned(void);

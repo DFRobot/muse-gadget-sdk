@@ -202,6 +202,9 @@ static void test_lookup_is_tri_state(void) {
     s_open_error = ESP_FAIL;
     CHECK(config_key_lookup("device_state") == CONFIG_KEY_LOOKUP_ERROR,
           "open failure must not collapse to NOT_FOUND");
+    s_open_error = ESP_ERR_NVS_NOT_FOUND;
+    CHECK(config_key_lookup("sdk_token") == CONFIG_KEY_NOT_FOUND,
+          "fresh device without a namespace should be unconfigured");
 }
 
 static void test_erase_propagates_commit_failure(void) {
@@ -226,6 +229,7 @@ static void test_setup_clear_verifies_credentials_and_preserves_identity(void) {
         fake_put(setup_keys[i], "credential");
     }
     fake_put("device_state", "device-identity");
+    fake_put("sdk_token", "developer-credential");
 
     CHECK(config_clear_setup(), "setup clear should succeed");
     for (size_t i = 0; i < sizeof(setup_keys) / sizeof(setup_keys[0]); i++) {
@@ -237,6 +241,8 @@ static void test_setup_clear_verifies_credentials_and_preserves_identity(void) {
           "unrelated device state was deleted");
     CHECK(strcmp(identity, "device-identity") == 0,
           "unrelated device state changed");
+    CHECK(config_key_lookup("sdk_token") == CONFIG_KEY_FOUND,
+          "setup rollback/reset must preserve SDK token for re-pairing");
 }
 
 static void test_pairing_clear_preserves_wifi_channel(void) {
@@ -245,6 +251,7 @@ static void test_pairing_clear_preserves_wifi_channel(void) {
     fake_put("ssid", "network");
     fake_put("password", "secret");
     fake_put("wifi_channel", "104");
+    fake_put("sdk_token", "developer-credential");
 
     CHECK(config_clear_pairing(), "pairing clear should succeed");
     CHECK(config_key_lookup("access_token") == CONFIG_KEY_NOT_FOUND,
@@ -253,6 +260,8 @@ static void test_pairing_clear_preserves_wifi_channel(void) {
           "pairing clear deleted wifi credentials");
     CHECK(config_key_lookup("wifi_channel") == CONFIG_KEY_FOUND,
           "pairing clear deleted wifi channel");
+    CHECK(config_key_lookup("sdk_token") == CONFIG_KEY_FOUND,
+          "pairing-only clear deleted SDK token");
 }
 
 static void test_setup_clear_fails_closed_on_uncommitted_credential(void) {

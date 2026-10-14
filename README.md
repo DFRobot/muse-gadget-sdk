@@ -55,6 +55,16 @@ USB-free sweep. The isolated diagnostic does not pair or need an SDK token;
 fixture safety and explicit hardware authorization still come first, as the
 [PPK2 rules](esp32/docs/power/ppk2.md) describe.
 
+## UNIHIKER K10
+
+The DFRobot K10 integration adds A-button voice input, multilingual captions,
+RGB status, onboard sensor readings and humidity events, on-demand camera
+capture, optional Cartesia streaming speech, and USB credential setup.
+See the [K10 feature and setup guide](UNIHIKER-K10.md) and
+[hardware notes](esp32/devices/dfrobot-unihiker-k10.md).
+The [integration review record](esp32/devices/dfrobot-unihiker-k10-integration.md)
+lists the source revisions, checks and remaining validation.
+
 ## Community
 
 Meet other hackers who are building and customizing Muse gadgets in our

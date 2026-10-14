@@ -176,9 +176,11 @@ static void run_command(char *cmd)
     }
 
     /* Never echo secrets back. */
-    bool secret = !strcmp(cmd, "wifi.pass") || !strncmp(cmd, "hatch.token", 11);
+    bool secret = !strcmp(cmd, "wifi.pass") || !strncmp(cmd, "hatch.token", 11)
+                  || !strncmp(cmd, "sdk.", 4);
     snprintf(s_last, sizeof(s_last), "%s: %s", cmd, res);
-    ESP_LOGI(TAG, "cmd %s%s%s -> %s", cmd, secret ? "" : "=", secret ? "" : v, res);
+    ESP_LOGI(TAG, "cmd %s%s%s -> %s", !strncmp(cmd, "sdk.", 4) ? "sdk (USB only)" : cmd,
+             secret ? "" : "=", secret ? "" : v, res);
     muse_state_poke();
 
     if (s_conn != BLE_HS_CONN_HANDLE_NONE) {

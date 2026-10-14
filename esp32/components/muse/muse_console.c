@@ -22,6 +22,52 @@
 #if !CONFIG_MUSE_CONSOLE_UART
 #include "driver/usb_serial_jtag.h"
 
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+#include <fcntl.h>
+#include <unistd.h>
+#include "driver/usb_serial_jtag_vfs.h"
+#include "hal/usb_serial_jtag_ll.h"
+#include "freertos/task.h"
+
+static int s_usb_fd = -1;
+
+esp_err_t muse_console_install(size_t rx_buf)
+{
+    (void)rx_buf;
+    if (s_usb_fd >= 0) return ESP_OK;
+    // The boot console already registers this VFS; keep its shared TX lock.
+    // No driver, ISR or RX/TX ring buffers are allocated in setup mode.
+    usb_serial_jtag_vfs_use_nonblocking();
+#if CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG
+    s_usb_fd = open("/dev/secondary", O_RDWR | O_NONBLOCK);
+#else
+    s_usb_fd = open("/dev/usbserjtag", O_RDWR | O_NONBLOCK);
+#endif
+    return s_usb_fd >= 0 ? ESP_OK : ESP_FAIL;
+}
+
+void muse_console_close(void)
+{
+    if (s_usb_fd >= 0) close(s_usb_fd);
+    s_usb_fd = -1;
+}
+
+bool muse_console_getc(uint8_t *c)
+{
+    // IDF 6.0.1 VFS nonblocking read checks only the driver's ring buffer,
+    // so it reports no data without a driver. Poll the hardware RX FIFO.
+    while (s_usb_fd >= 0) {
+        if (usb_serial_jtag_ll_read_rxfifo(c, 1) == 1) return true;
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+    return false;
+}
+
+void muse_console_write(const void *buf, size_t n)
+{
+    if (s_usb_fd >= 0) write(s_usb_fd, buf, n);
+}
+#else
 esp_err_t muse_console_install(size_t rx_buf)
 {
     usb_serial_jtag_driver_config_t cfg = USB_SERIAL_JTAG_DRIVER_CONFIG_DEFAULT();
@@ -38,6 +84,7 @@ void muse_console_write(const void *buf, size_t n)
 {
     usb_serial_jtag_write_bytes(buf, n, portMAX_DELAY);
 }
+#endif
 
 bool muse_console_host(void)
 {

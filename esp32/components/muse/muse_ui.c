@@ -1269,6 +1269,11 @@ static bool update_sleep(void)
 /* Idle's label: whether a press reaches Hatch now or waits for Wi-Fi. */
 static const char *idle_name(muse_wifi_state_t wifi)
 {
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    if (!muse_link_sdk_ready()) return "USB";
+#else
+    if (!muse_link_sdk_ready()) return "USB: SET SDK TOKEN";
+#endif
     static bool joined;   /* since boot: from then on, a drop is reconnecting */
     switch (wifi) {
     case MUSE_WIFI_CONNECTED:
@@ -1342,6 +1347,11 @@ static void update_chrome(float now)
     const char *shown = paired ? "" : b.name;
 #if LV_USE_SNAPSHOT
     if (!paired && s_bench_demo) shown = "MuseGadget-DEMO";
+#endif
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    // First-time USB setup keeps the animated face and reuses its two header
+    // labels instead of covering it with the manual USB-mode menu.
+    if (!muse_link_sdk_ready()) shown = "Set SDK Token first.";
 #endif
     if (name_cw > 0 && (int)strlen(shown) * name_cw > (muse_board->rim_controls ? 280 : s_w)) {
         const char *tail = strrchr(shown, '-');
@@ -1431,7 +1441,11 @@ static void update_power(float now)
     muse_power_t p = muse_state_power();
     char buf[32];
     if (p.battery_pct < 0) {
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+        buf[0] = '\0'; // K10 has no battery reading; USB power is not USB mode.
+#else
         strlcpy(buf, p.usb ? (s_small ? "USB" : "USB POWER") : "", sizeof(buf));
+#endif
     } else if (s_small) {
         snprintf(buf, sizeof(buf), "%s%d%%", p.charging ? "+" : "", p.battery_pct);
     } else if (p.charging) {
@@ -1448,6 +1462,9 @@ static void update_status(muse_mode_t mode, float now)
 {
     uint32_t accent = muse_pixel_accent(mode);
     const char *name = mode == MUSE_MODE_IDLE ? s_idle_name : MODE_NAMES[mode];
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    if (!muse_link_sdk_ready()) name = "USB";
+#endif
 
     if (name != s_shown_name) {
         lv_label_set_text(s_state_lbl, name);
