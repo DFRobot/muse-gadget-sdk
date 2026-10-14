@@ -53,10 +53,12 @@ Checked on Windows with ESP-IDF v6.0.1:
 - Source publication scan found no non-fixture SDK Tokens, detected API keys,
   or build/log/binary artifacts in the changed files.
 
-Earlier K10 firmware was tested on physical devices for conversation,
-sensor readings and events, camera invocation, streaming speech and USB
-setup. Those earlier results do not replace hardware validation of this
-newer upstream integration. No device was reflashed during this migration.
+On 2026-10-14, the integrated firmware from revision `52d77c8` was flashed to
+the K10 on COM10 without erasing NVS. Boot logs confirmed display and audio
+initialization, valid temperature/humidity, light and acceleration readings,
+and no USB configuration task/driver allocation during configured startup.
+The user subsequently reported that functional testing was normal. This is
+hardware smoke-test evidence, not a substitute for the pending full host suite.
 
 ## Before an upstream contribution
 
