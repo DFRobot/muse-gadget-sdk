@@ -120,7 +120,6 @@ battery gauge. Sensors, camera, TF card and original offline AI models are
 not integrated in this profile.
 
 The board driver derives from the K10 adapter exercised on hardware in the
-full-feature firmware. This basic profile was also built and flashed to K10;
-runtime USB status confirmed the board identity and retained pairing settings.
-End-to-end pairing and voice conversation have not yet been retested for this
-reduced profile.
+full-feature firmware. The basic firmware was also successfully built and
+flashed to K10. On-device testing confirmed that conversation, button
+interactions and screen display all work correctly.
