@@ -7,8 +7,7 @@ read the reply aloud.
 
 - Hardware and purchase: [DFRobot store](https://www.dfrobot.com/product-2904.html).
 - Local purchasing options: [global distributors](https://www.unihiker.com/distributors).
-- [DFRobot Muse walkthrough](https://www.unihiker.com/wiki/K10/Playground/muse_unihiker_k10)
-  (publication pending).
+- [DFRobot Muse walkthrough](https://www.unihiker.com/wiki/K10/Playground/muse_unihiker_k10).
 - Hardware references: [schematic V1.2](https://img.dfrobot.com.cn/wikicn/5cabf4771804207b131ae8cb/36b61e6635492b977df87d55fe5dca4e.pdf)
   and [DFRobot Arduino sources](https://github.com/DFRobot/framework-arduinounihiker).
 
