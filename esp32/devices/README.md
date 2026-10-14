@@ -630,7 +630,7 @@ other firmware keeps its own data.
 | Feature | K10 |
 |---|---|
 | BLE pairing and Wi-Fi | Yes |
-| UI, avatar, Chinese captions | Yes |
+| UI, avatar, reply captions | Yes |
 | Push-to-talk | A button |
 | RGB status | Three WS2812 LEDs |
 | Sensors | AHT20 temperature/humidity, LTR303 light, SC7A20H acceleration; `sensors.read` |
