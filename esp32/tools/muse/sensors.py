@@ -1,14 +1,19 @@
 """Print K10 sensor snapshots without resetting it: sensors.py COM10 [seconds]."""
 import json
-import sys
+import argparse
 import time
 import serial
 
-port = sys.argv[1] if len(sys.argv) > 1 else 'COM10'
-seconds = float(sys.argv[2]) if len(sys.argv) > 2 else 10
-with serial.Serial(port, 115200, timeout=0.3) as console:
+parser = argparse.ArgumentParser(description='Read K10 sensors in USB mode without resetting the device.')
+parser.add_argument('port', help='verified K10 serial port')
+parser.add_argument('seconds', type=float, nargs='?', default=10)
+args = parser.parse_args()
+with serial.Serial() as console:
+    console.port, console.baudrate, console.timeout = args.port, 115200, 0.3
+    console.dtr = console.rts = False
+    console.open()
     console.write(b'>sensors\n')
-    end = time.monotonic() + seconds
+    end = time.monotonic() + args.seconds
     pending = bytearray()
     while time.monotonic() < end:
         pending.extend(console.read(4096))

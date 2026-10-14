@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # Build or flash Home Link for one board:
-#   tools/muse/board.sh build|flash <k10|s3|s3n|s3-216|aipi|box3|c6|c6-206|watcher|sticks3|plus2|cardputer-adv|stopwatch|cores3|core2|fnk0104b|jc3248w535|lcd7|vn183|ai-passport|echoear> [serial|port]
+#   tools/muse/board.sh build|flash <k10|s3|s3n|s3-216|185c|aipi|box3|c6|c6-206|watcher|sticks3|plus2|cardputer-adv|stopwatch|cores3|core2|fnk0104b|jc3248w535|lcd7|vn183|ai-passport|echoear> [serial|port]
 # Build log: /tmp/muse_build_<board>.log. flash finds the board's port by its
 # USB device (tools/muse/ports.py); with several of a kind attached, pass the
 # one's USB serial number (the MAC on native USB) or its port. Flashing from a

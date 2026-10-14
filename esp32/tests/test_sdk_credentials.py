@@ -10,7 +10,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 HEADERS = {
-    'sdkconfig.h': '#define CONFIG_MUSE_ENABLED 1\n#define CONFIG_GADGET_SDK_RUNTIME_ONLY 1\n',
+    'sdkconfig.h': '#define CONFIG_MUSE_ENABLED 1\n#define CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10 1\n#define CONFIG_GADGET_SDK_RUNTIME_ONLY 1\n',
     'app.h': '#include <stdbool.h>\nbool app_credentials_begin(void);\nvoid app_credentials_end(void);\n',
     'identity.h': 'const char *identity_node_id(void);\n',
     'muse_settings.h': '#include <stdbool.h>\nbool muse_settings_clear_credentials(void);\n',
@@ -24,6 +24,7 @@ QueueHandle_t xQueueCreate(unsigned count, unsigned size);
 int xQueueSend(QueueHandle_t queue, const void *item, int ticks);
 int xQueueReceive(QueueHandle_t queue, void *item, int ticks);
 unsigned uxQueueMessagesWaiting(QueueHandle_t queue);
+void vQueueDelete(QueueHandle_t queue);
 ''',
 }
 HARNESS = r'''
@@ -54,6 +55,7 @@ void *xQueueCreate(unsigned count, unsigned size) { assert(count == 2); item_siz
 int xQueueSend(void *q, const void *p, int ticks) { (void)q; (void)ticks; if (queued) return 0; memcpy(queue_memory, p, item_size); queued = 1; return 1; }
 int xQueueReceive(void *q, void *p, int ticks) { (void)q; (void)ticks; if (!queued) return 0; memcpy(p, queue_memory, item_size); queued = 0; return 1; }
 unsigned uxQueueMessagesWaiting(void *q) { (void)q; return queued; }
+void vQueueDelete(void *q) { (void)q; queued = 0; }
 bool config_get_str(const char *key, char *out, size_t cap) { (void)key; reads++; if (!stored[0] || strlen(stored) >= cap) return false; strcpy(out, stored); return true; }
 config_key_lookup_t config_key_lookup(const char *key) { (void)key; reads++; return stored[0] ? CONFIG_KEY_FOUND : CONFIG_KEY_NOT_FOUND; }
 bool config_set_str(const char *key, const char *value) { assert(locked); assert(!strcmp(key, SDK_TOKEN_KEY)); writes++; if (storage_failure) return false; strcpy(stored, value); return true; }
@@ -66,6 +68,8 @@ int main(void) {
     assert(sdk_token_valid(token));
     assert(!sdk_token_valid("mgst_short"));
     sdk_credentials_init(); assert(!sdk_credentials_active());
+    assert(item_size == 0); // Normal initialization allocates no USB queue.
+    assert(sdk_credentials_usb_start());
     reads = writes = 0;
     char command[200];
     snprintf(command, sizeof(command), "sdk.config={\"id\":\"save_1\",\"op\":\"save\",\"token\":\"%s\"}", token);
@@ -96,6 +100,57 @@ int main(void) {
 
 
 class SDKCredentialsTest(unittest.TestCase):
+    def test_runtime_identity_is_isolated_from_other_boards(self):
+        cc = shlex.split(os.environ.get('CC', 'cc'))
+        if not cc or not shutil.which(cc[0]): self.skipTest('host C compiler not available')
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            (directory / 'sdkconfig.h').write_text(
+                '#define CONFIG_HOMEHUB_BLE_NAME_PREFIX "MuseGadget"\n'
+                '#define CONFIG_HOMEHUB_BLE_NAME_SUFFIX ""\n'
+                '#define CONFIG_GADGET_SDK_TOKEN "compiled-test-token"\n')
+            (directory / 'esp_mac.h').write_text(
+                '#include <stdint.h>\n#define ESP_MAC_WIFI_STA 0\n#define ESP_OK 0\n'
+                'int esp_read_mac(uint8_t *mac, int type);\n')
+            (directory / 'esp_log.h').write_text('#define ESP_LOGW(tag, ...) ((void)(tag))\n')
+            harness = directory / 'identity.c'
+            harness.write_text(r'''
+#include <assert.h>
+#include <stdint.h>
+#include <string.h>
+#include "identity.h"
+static int initialized;
+int esp_read_mac(uint8_t *mac, int type) {
+    (void)type;
+    const uint8_t test_mac[] = {1, 2, 3, 4, 5, 6};
+    memcpy(mac, test_mac, sizeof(test_mac));
+    return 0;
+}
+void sdk_credentials_init(void) { initialized++; }
+const char *sdk_credentials_active(void) { return "runtime-test-token"; }
+int main(void) {
+    identity_init();
+    assert(!strcmp(identity_node_id(), "homelink-040506"));
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
+    assert(initialized == 1);
+    assert(!strcmp(identity_sdk_token(), "runtime-test-token"));
+#else
+    assert(initialized == 0);
+    assert(!strcmp(identity_sdk_token(), "compiled-test-token"));
+#endif
+    return 0;
+}
+''')
+            for k10 in (0, 1):
+                binary = directory / ('identity.exe' if os.name == 'nt' else 'identity')
+                result = subprocess.run([*cc, '-std=c11', '-Wall', '-Wextra', '-Werror',
+                    f'-DCONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10={k10}',
+                    '-I', str(directory), '-I', str(ROOT / 'main'),
+                    str(harness), str(ROOT / 'main/identity.c'), '-o', str(binary)],
+                    capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                subprocess.run([str(binary)], check=True, capture_output=True)
+
     def test_nvs_queue_gate_and_restart_contract(self):
         cc = shlex.split(os.environ.get('CC', 'cc'))
         if not cc or not shutil.which(cc[0]): self.skipTest('host C compiler not available')

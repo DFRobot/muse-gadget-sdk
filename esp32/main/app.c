@@ -2628,7 +2628,7 @@ void app_run(void) {
     ESP_LOGI(TAG, "  Colour:   %s", have_colour ? colour : "(none)");
     ESP_LOGI(TAG, "  Region:   %s", have_region ? region : "(none)");
     ESP_LOGI(TAG, "  Verify:   %s", link_pairing_sign_factory_test());
-    ESP_LOGI(TAG, "  SDK token:  %s", identity_sdk_token() ? "configured" : "not configured (USB setup required)");
+    ESP_LOGI(TAG, "  SDK token:  %s", identity_sdk_token() ? "configured" : "not configured");
     ESP_LOGI(TAG, "========================");
 
     link_pairing_init(identity_node_id(), identity_device_id(), identity_mac(),

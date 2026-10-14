@@ -253,9 +253,6 @@ void sdk_credentials_init(void)
 #if CONFIG_MUSE_K10_CARTESIA
     tts_credentials_init();
 #endif
-#if !CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
-    s_requests = xQueueCreate(2, sizeof(sdk_request_t));
-#endif
 #endif
 }
 

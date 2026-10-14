@@ -9,7 +9,7 @@ extern "C" {
 #define MUSE_TTS_KEY_CAP 256
 #define MUSE_TTS_VOICE_CAP 37
 #define MUSE_TTS_LANGUAGE_CAP 8
-#define MUSE_TTS_DEFAULT_VOICE "a0e99841-438c-4a64-b679-ae501e7d6091"
+#define MUSE_TTS_DEFAULT_VOICE "db6b0ed5-d5d3-463d-ae85-518a07d3c2b4"
 #define MUSE_TTS_RATE 16000
 typedef struct {
     char api_key[MUSE_TTS_KEY_CAP];

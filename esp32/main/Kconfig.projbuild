@@ -25,6 +25,7 @@ menu "ESP32 Device SDK"
 
     config GADGET_SDK_RUNTIME_ONLY
         bool "Configure SDK token at runtime only (public firmware)"
+        depends on MUSE_BOARD_DFROBOT_UNIHIKER_K10
         default n
         help
             Never compile a developer SDK token into this firmware. Users

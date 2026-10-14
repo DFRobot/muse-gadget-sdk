@@ -1,15 +1,15 @@
 param(
     [ValidateSet('build', 'flash', 'package')][string]$Action = 'build',
-    [string]$Port = 'COM14'
+    [string]$Port
 )
 $ErrorActionPreference = 'Stop'
 $env:PYTHONUTF8 = '1'
-if (-not $env:IDF_PATH) {
-    $idfPythonScripts = Join-Path $env:USERPROFILE '.espressif/python_env/idf6.0_py3.13_env/Scripts'
-    if (Test-Path (Join-Path $idfPythonScripts 'python.exe')) {
-        $env:PATH = $idfPythonScripts + ';' + $env:PATH
+if ($Action -eq 'flash' -and -not $Port) { throw 'Specify the verified device port with -Port.' }
+if (-not (Get-Command idf.py -ErrorAction SilentlyContinue)) {
+    if (-not $env:IDF_PATH -or -not (Test-Path (Join-Path $env:IDF_PATH 'export.ps1'))) {
+        throw 'Activate ESP-IDF v6.0.1, or set IDF_PATH to its installation directory.'
     }
-    . 'C:\Espressif\frameworks\esp-idf-v6.0.1\export.ps1'
+    . (Join-Path $env:IDF_PATH 'export.ps1')
 }
 $projectPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 Push-Location $projectPath

@@ -27,7 +27,6 @@ set(GADGET_SRCS
     "wifi_mgr.c"
     "wifi_known.c"
     "identity.c"
-    "credentials/sdk_credentials.c"
     "config_store.c"
     "vm_api.c"
     "diagnostic_log.c"
@@ -90,6 +89,10 @@ elseif(CONFIG_HOMEHUB_LED_BACKEND_WAVESHARE_SSD1681)
     list(APPEND GADGET_SRCS "epaper_status.c" "epd_ssd1681.c")
 else()
     list(APPEND GADGET_SRCS "led_status.c")
+endif()
+
+if(CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10)
+    list(APPEND GADGET_SRCS "credentials/sdk_credentials.c")
 endif()
 
 if(CONFIG_MUSE_ENABLED)

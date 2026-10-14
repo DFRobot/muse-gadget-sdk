@@ -1271,8 +1271,6 @@ static const char *idle_name(muse_wifi_state_t wifi)
 {
 #if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
     if (!muse_link_sdk_ready()) return "USB";
-#else
-    if (!muse_link_sdk_ready()) return "USB: SET SDK TOKEN";
 #endif
     static bool joined;   /* since boot: from then on, a drop is reconnecting */
     switch (wifi) {

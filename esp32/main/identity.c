@@ -15,7 +15,10 @@
  */
 
 #include "identity.h"
+#include "sdkconfig.h"
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
 #include "credentials/sdk_credentials.h"
+#endif
 
 #include <stdio.h>
 #include <ctype.h>
@@ -41,7 +44,9 @@ static char s_mac[18];
 static char s_device_id[48];
 
 void identity_init(void) {
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
     sdk_credentials_init();
+#endif
     uint8_t mac[6] = {0};
     if (esp_read_mac(mac, ESP_MAC_WIFI_STA) != ESP_OK) {
         ESP_LOGW(TAG, "esp_read_mac failed; using zeros");
@@ -61,5 +66,9 @@ const char *identity_ble_name(void) { return s_ble_name; }
 const char *identity_mac(void) { return s_mac; }
 const char *identity_device_id(void) { return s_device_id; }
 const char *identity_sdk_token(void) {
+#if CONFIG_MUSE_BOARD_DFROBOT_UNIHIKER_K10
     return sdk_credentials_active();
+#else
+    return CONFIG_GADGET_SDK_TOKEN[0] ? CONFIG_GADGET_SDK_TOKEN : NULL;
+#endif
 }
