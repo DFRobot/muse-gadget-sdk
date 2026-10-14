@@ -7,7 +7,7 @@ pairing, Wi-Fi, voice-input, reply-caption and menu flows.
 - [Official product and purchase](https://www.dfrobot.com/product-2904.html)
 - [Global distributors](https://www.unihiker.com/distributors)
 - [DFRobot Arduino sources](https://github.com/DFRobot/framework-arduinounihiker)
-- [Hardware schematic V1.2](https://img.dfrobot.com.cn/wikicn/5cabf4771804207b131ae8cb/36b61e6635492b977df87d55fe5dca4e.pdf)
+- [Hardware schematic](https://www.unihiker.com/wiki/K10/HardwareReference/img/hardwarereference_onboard/UnihikerK10Schematic.pdf)
 
 ## Included functionality
 
