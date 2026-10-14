@@ -22,17 +22,46 @@ adds sensors, humidity events, camera capture, optional streaming TTS and USB
 credential setup. Its [Muse walkthrough](https://www.unihiker.com/wiki/K10/Playground/muse_unihiker_k10)
 describes those additional features. They are not part of this basic port.
 
-## Build, token and flashing
+## Build and flash
 
 Use ESP-IDF v6.0.1 and run commands from `esp32/`. The included USB data cable
 connects to the ESP32-S3's native USB Serial/JTAG (`303a:1001`). Several ESP32
 boards share that ID; verify the board and port before flashing.
 
+### 1. Configure your SDK Token before building (required)
+
+**The basic firmware requires your own Muse Gadgets SDK Token at compile time.**
+Get one from [Muse Gadgets](https://gadgets.muse.ai/settings/sdk-tokens).
+Enter it in the build configuration; you do not need to edit any C source file.
+This branch has no runtime SDK Token entry or USB HTML configuration tool.
+
+In an activated ESP-IDF terminal, run the following command on one line
+(Windows, macOS or Linux):
+
+```sh
+idf.py -B build-muse-dfrobot-unihiker-k10 -DIDF_TARGET=esp32s3 -DSDKCONFIG=build-muse-dfrobot-unihiker-k10/sdkconfig "-DSDKCONFIG_DEFAULTS=sdkconfig.defaults;devices/sdkconfig.muse;devices/sdkconfig.muse-dfrobot-unihiker-k10" menuconfig
+```
+
+Open **ESP32 Device SDK > Muse Gadgets SDK token**, enter your Token, save,
+and exit. The setting is stored in the ignored file
+`build-muse-dfrobot-unihiker-k10/sdkconfig`. If editing that generated file
+directly, replace the placeholder below with your own Token:
+
+```ini
+CONFIG_GADGET_SDK_TOKEN="mgst_YOUR_TOKEN"
+```
+
+The Token is embedded in the application binary. Changing it requires
+rebuilding and reflashing. Keep it out of board overlays and commits, and
+keep binaries containing your personal Token private. A build without a Token
+may compile with a warning, but it is not ready for new-device pairing.
+
+### 2. Build
+
 On Linux or macOS, use the existing helper:
 
 ```sh
 tools/muse/board.sh build k10
-tools/muse/board.sh flash k10 YOUR_PORT
 ```
 
 On Windows, run this command on one line in an activated IDF PowerShell:
@@ -41,13 +70,13 @@ On Windows, run this command on one line in an activated IDF PowerShell:
 idf.py -B build-muse-dfrobot-unihiker-k10 -DIDF_TARGET=esp32s3 -DSDKCONFIG=build-muse-dfrobot-unihiker-k10/sdkconfig "-DSDKCONFIG_DEFAULTS=sdkconfig.defaults;devices/sdkconfig.muse;devices/sdkconfig.muse-dfrobot-unihiker-k10" build
 ```
 
-This basic port uses the SDK's existing compile-time Token configuration.
-Set `CONFIG_GADGET_SDK_TOKEN` in the ignored build-directory `sdkconfig`, or
-run the same `idf.py` command with `menuconfig` in place of `build`, and rebuild.
-Get your own Token from [Muse Gadgets](https://gadgets.muse.ai/settings/sdk-tokens).
-Keep it out of the board overlay and commits. There is no USB Token setup page
-in this branch. A build without a Token emits the SDK's standard warning;
-configure one before attempting pairing.
+### 3. Flash
+
+On Linux or macOS:
+
+```sh
+tools/muse/board.sh flash k10 YOUR_PORT
+```
 
 For manual flashing, run the same `idf.py` arguments with `-p YOUR_PORT flash`
 in place of `build`. If the device does not enter the bootloader, hold BOOT,
