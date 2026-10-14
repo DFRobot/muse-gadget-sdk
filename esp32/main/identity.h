@@ -27,6 +27,7 @@ const char *identity_node_id(void);
 const char *identity_ble_name(void);
 const char *identity_mac(void);
 const char *identity_device_id(void);
-// Immutable boot cache: NVS SDK token, or the development build's fallback.
+// K10 uses an immutable NVS boot cache with an optional development fallback;
+// other boards use CONFIG_GADGET_SDK_TOKEN directly.
 // Runtime-only public builds have no fallback. NULL when unconfigured.
 const char *identity_sdk_token(void);

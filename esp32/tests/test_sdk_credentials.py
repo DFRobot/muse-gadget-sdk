@@ -112,7 +112,9 @@ class SDKCredentialsTest(unittest.TestCase):
             (directory / 'esp_mac.h').write_text(
                 '#include <stdint.h>\n#define ESP_MAC_WIFI_STA 0\n#define ESP_OK 0\n'
                 'int esp_read_mac(uint8_t *mac, int type);\n')
-            (directory / 'esp_log.h').write_text('#define ESP_LOGW(tag, ...) ((void)(tag))\n')
+            (directory / 'esp_log.h').write_text(
+                '#define ESP_LOGW(tag, ...) ((void)(tag))\n'
+                '#define ESP_LOGI(tag, ...) ((void)(tag))\n')
             harness = directory / 'identity.c'
             harness.write_text(r'''
 #include <assert.h>

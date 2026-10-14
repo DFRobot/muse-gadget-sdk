@@ -91,6 +91,7 @@ static void reply(const char *id, const char *error, bool configured, bool resta
     cJSON_AddStringToObject(json, "tts_error", muse_tts_last_error());
     wipe(&tts, sizeof(tts));
 #else
+    (void)storage_safe;
     cJSON_AddBoolToObject(json, "tts_supported", false);
 #endif
     char *text = cJSON_PrintUnformatted(json);

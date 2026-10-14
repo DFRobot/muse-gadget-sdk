@@ -25,7 +25,7 @@ read the reply aloud.
 | USB setup | Single HTML file for SDK Token, optional voice settings and clearing user settings |
 | RGB LEDs | Setup, connection, recording, thinking, camera and error status |
 
-No key is needed for text replies. Cartesia is disabled until configured.
+No Cartesia key is needed for text replies. Cartesia is disabled until configured.
 Speech synthesis sends reply text to Cartesia and uses the user's service
 credits. The firmware does not run a computer-side TTS proxy.
 
