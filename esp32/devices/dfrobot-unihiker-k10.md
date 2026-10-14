@@ -19,8 +19,7 @@ pairing, Wi-Fi, voice-input, reply-caption and menu flows.
 
 The [full-feature branch](https://github.com/DFRobot/muse-gadget-sdk/tree/muse-unihiker-k10-full)
 adds sensors, humidity events, camera capture, optional streaming TTS and USB
-credential setup. Its [Muse walkthrough](https://www.unihiker.com/wiki/K10/Playground/muse_unihiker_k10)
-describes those additional features. They are not part of this basic port.
+credential setup. They are not part of this basic port.
 
 ## Build and flash
 
@@ -86,6 +85,11 @@ its data and clearing its previous partition layout. Reflashing Muse preserves
 NVS. See the [SDK flashing instructions](../README.md).
 
 ## Use
+
+For detailed usage instructions and demonstrations, see the
+[K10 Muse walkthrough](https://www.unihiker.com/wiki/K10/Playground/muse_unihiker_k10).
+The walkthrough also demonstrates the extended features of the full firmware;
+this basic port supports the functions listed under **Included functionality**.
 
 Enable Developer mode in the Muse phone app, add K10, press A to confirm,
 and configure Wi-Fi. Hold A while speaking and release it to send. Muse's
