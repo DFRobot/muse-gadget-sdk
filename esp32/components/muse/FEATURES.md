@@ -32,4 +32,6 @@ K10 reuses the existing BLE pairing, Wi-Fi, Muse protocol, voice-upload, font an
 - [Streaming TTS](tts/README.md)
 - [USB setup mode](usb/README.md)
 
-The camera settings and humidity policy are preserved. The former computer-side TTS service has been removed in favor of optional Cartesia PCM streaming. Camera image-quality limitations are recorded in its guide; reorganizing the code does not resolve those limitations.
+Camera image-quality limitations are recorded in the camera guide. Thresholds
+and repeat intervals are firmware settings in the sensor module; Cartesia
+credentials, voice and language are user settings in NVS.
