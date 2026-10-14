@@ -3,15 +3,16 @@
 Full-feature Muse firmware for the UNIHIKER K10: ESP32-S3, 16 MB flash, 8 MB octal PSRAM,
 and a 2.8-inch 240x320 display. Hold **A** to speak, release to send, and read
 Muse's reply on the animated screen. Optional Cartesia streaming speech can
-read the reply aloud.
+read the reply aloud. Muse can also read temperature, humidity, light and
+three-axis acceleration, and request a camera photo when you ask it to look
+at an object.
 
 For the minimal board port using the SDK's existing application flows, see
 [`muse-unihiker-k10-basic`](https://github.com/DFRobot/muse-gadget-sdk/tree/muse-unihiker-k10-basic).
 
 - Hardware and purchase: [DFRobot store](https://www.dfrobot.com/product-2904.html).
 - Local purchasing options: [global distributors](https://www.unihiker.com/distributors).
-- [DFRobot Muse walkthrough](https://www.unihiker.com/wiki/K10/Playground/muse_unihiker_k10).
-- Hardware references: [schematic V1.2](https://img.dfrobot.com.cn/wikicn/5cabf4771804207b131ae8cb/36b61e6635492b977df87d55fe5dca4e.pdf)
+- Hardware references: [schematic](https://www.unihiker.com/wiki/K10/HardwareReference/img/hardwarereference_onboard/UnihikerK10Schematic.pdf)
   and [DFRobot Arduino sources](https://github.com/DFRobot/framework-arduinounihiker).
 
 ## Features
@@ -71,6 +72,9 @@ layout. Reflashing Muse preserves NVS; changing from vendor firmware can
 require backing up data and clearing the previous layout.
 
 ## First-time setup
+
+For detailed usage instructions and demonstrations, see the
+[K10 Muse walkthrough](https://www.unihiker.com/wiki/K10/Playground/muse_unihiker_k10).
 
 1. Release BOOT and press RESET once after flashing.
 2. Open `release/usb-config/k10-usb-config.html` in desktop Chrome or Edge.
