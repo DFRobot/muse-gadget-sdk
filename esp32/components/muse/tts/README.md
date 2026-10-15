@@ -13,6 +13,8 @@ ESP-IDF 6.0.1 `vStreamBufferDeleteWithCaps` incorrectly passes a stream buffer t
 
 Get a regular user key at https://play.cartesia.ai/keys. Save the key, Voice ID and language through the page, then restart. Changes preserve Muse pairing and Wi-Fi. Clearing only the SDK Token or rolling back pairing preserves TTS; clearing all user settings also clears TTS. Before pairing from scratch, remove the old device in the Muse app.
 
+In the HTML tool, **Reply language** must match the language Muse uses, and the selected Voice ID must support it. A mismatch can prevent voice playback. For example, select **Chinese** for Chinese replies.
+
 Credentials live in one `homehub/cartesia_tts` NVS JSON string; the boot cache is immutable. Serial/PSRAM-stack code validates and queues requests; the internal-stack keeper performs NVS I/O under the operation gate. Responses expose only configured status, Voice ID, language and fixed diagnostic states. They never return the key or log raw provider errors. NVS is currently unencrypted; physical USB access permits replacing settings. Do not distribute device NVS or a publisher's shared API Key.
 
 Playback starts after 32,000 bytes (about one second). The receive buffer is limited to 256 KiB (about eight seconds). A full buffer waits instead of dropping samples; underruns trigger prebuffering again. Short completed streams drain the remaining PCM directly. Network, provider and quota errors preserve text replies; network interruptions may still pause audio.

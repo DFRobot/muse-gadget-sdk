@@ -80,6 +80,9 @@ For detailed usage instructions and demonstrations, see the
 2. Open `release/usb-config/k10-usb-config.html` in desktop Chrome or Edge.
 3. Connect K10 and enter your own [Muse Gadgets SDK Token](https://gadgets.muse.ai/settings/sdk-tokens).
    Optionally enter your Cartesia key, Voice ID and language.
+   **Reply language** must match the language Muse uses, and the Voice ID must
+   support that language. A mismatch can prevent voice playback. For example,
+   select **Chinese** for Chinese replies.
 4. Choose **Save all settings**. K10 restarts after all entered settings are
    confirmed saved.
 5. Enable Developer mode in the phone's Muse app, add K10, press A to confirm,

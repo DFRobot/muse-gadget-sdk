@@ -58,4 +58,6 @@ Before switching accounts or transferring a device, choose **Clear all user sett
 
 Voice is off until a user enters their own Cartesia API Key, Voice ID and language. Use **Save all settings** to apply them and restart. New settings default to English; existing settings are preserved. **Test voice** uses your Cartesia credits; refresh status to check the result. TTS updates preserve Muse pairing and Wi-Fi. Invalid keys, insufficient credits or network failure leave text replies available. Keys are neither embedded in firmware nor returned to the page. Enabling TTS sends reply text to Cartesia.
 
+In the HTML tool, **Reply language** must match the language Muse uses, and the selected Voice ID must support it. A mismatch can prevent voice playback. For example, select **Chinese** for Chinese replies.
+
 The package includes four BIN files, one USB configuration HTML, this guide, checksums and license notices. It contains no operating-system-specific flash script. See `licenses/README.md` for the license directory. Open-source licenses and third-party notices are included. SDK terms: https://gadgets.muse.ai/sdk-terms. Check the terms and resource licenses for your use; supplying individual tokens does not waive SDK terms. Verify file integrity with `SHA256SUMS.txt`.
