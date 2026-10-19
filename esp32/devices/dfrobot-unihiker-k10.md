@@ -74,7 +74,7 @@ require backing up data and clearing the previous layout.
 ## First-time setup
 
 For detailed usage instructions and demonstrations, see the
-[K10 Muse walkthrough](https://www.unihiker.com/wiki/K10/Playground/muse_unihiker_k10).
+[K10 Muse walkthrough](https://www.unihiker.com/wiki/K10/Playground/muse_unihiker_k10/).
 
 1. Release BOOT and press RESET once after flashing.
 2. Open `release/usb-config/k10-usb-config.html` in desktop Chrome or Edge.
