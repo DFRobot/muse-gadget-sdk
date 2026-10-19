@@ -87,7 +87,7 @@ NVS. See the [SDK flashing instructions](../README.md).
 ## Use
 
 For detailed usage instructions and demonstrations, see the
-[K10 Muse walkthrough](https://www.unihiker.com/wiki/K10/Playground/muse_unihiker_k10).
+[K10 Muse walkthrough](https://www.unihiker.com/wiki/K10/Playground/muse_unihiker_k10/).
 The walkthrough also demonstrates the extended features of the full firmware;
 this basic port supports the functions listed under **Included functionality**.
 
