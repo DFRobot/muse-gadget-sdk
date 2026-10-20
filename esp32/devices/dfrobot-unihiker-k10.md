@@ -21,6 +21,10 @@ The [full-feature branch](https://github.com/DFRobot/muse-gadget-sdk/tree/muse-u
 adds sensors, humidity events, camera capture, optional streaming TTS and USB
 credential setup. They are not part of this basic port.
 
+For the full firmware's illustrated setup and usage instructions, see the
+[full firmware user guide](https://github.com/DFRobot/muse-gadget-sdk/blob/muse-unihiker-k10-full/esp32/devices/dfrobot-unihiker-k10.md).
+Follow the build and setup instructions below when using this basic branch.
+
 ## Build and flash
 
 Use ESP-IDF v6.0.1 and run commands from `esp32/`. The included USB data cable
